@@ -2,70 +2,84 @@ const std = @import("std");
 const Io = std.Io;
 
 const riowlib = @import("riowlib");
+const geom = riowlib.geom;
+const Vec3 = geom.Vec3;
+const Point3 = geom.Point3;
+const color = riowlib.color;
+const Color = color.Color;
+const Ray = riowlib.Ray;
 
-pub fn main(init: std.process.Init) !void {
-    // Prints to stderr, unbuffered, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+// Image
+const aspect_ratio: f64 = 16.0 / 9.0;
+const image_width = 400;
+const image_width_f64: f64 = @floatFromInt(image_width);
 
-    // This is appropriate for anything that lives as long as the process.
-    const arena: std.mem.Allocator = init.arena.allocator();
+const image_h_f64: f64 = image_width / aspect_ratio;
+const image_height: comptime_int = if (image_h_f64 < 1) 1 else @intFromFloat(image_h_f64);
+const image_height_f64: f64 = @floatFromInt(image_height);
 
-    // Accessing command line arguments:
-    const args = try init.minimal.args.toSlice(arena);
-    for (args) |arg| {
-        std.log.info("arg: {s}", .{arg});
+// Camera
+const focal_length: f64 = 1.0;
+const viewport_height: f64 = 2.0;
+const viewport_width: f64 = viewport_height * (image_width_f64 / image_height_f64);
+const camera_center: Point3 = .zeroes();
+
+// Calculate the horizontal and vertical vector across the viewport edges.
+const viewport_u: Vec3 = .init(viewport_width, 0, 0);
+const viewport_v: Vec3 = .init(0, -viewport_height, 0);
+
+// Calculate associated delta vectors from pixel to pixel.
+const pixel_delta_u: Vec3 = viewport_u.scale(1 / image_width_f64);
+const pixel_delta_v: Vec3 = viewport_v.scale(1 / image_height_f64);
+
+// Calculate location of the upper left pixel.
+const viewport_upper_left = blk: {
+    const viewport_u_half = viewport_u.scale(0.5);
+    const viewport_v_half = viewport_v.scale(0.5);
+    const focal_length_vec: Vec3 = .init(0, 0, focal_length);
+    const res = camera_center.sub(focal_length_vec).sub(viewport_u_half).sub(viewport_v_half);
+    break :blk res;
+};
+const pixel00_loc = viewport_upper_left.add(pixel_delta_u.add(pixel_delta_v).scale(0.5));
+
+pub fn main() !void {
+    var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
+    const allocator: std.mem.Allocator = arena.allocator();
+    defer arena.deinit();
+
+    var threaded: Io.Threaded = .init(allocator, .{});
+    const io: Io = threaded.io();
+
+    const file_writer_buffer: []u8 = try allocator.alloc(u8, 1024);
+    const file = try Io.Dir.cwd().createFile(io, "data/image.ppm", .{});
+    defer file.close(io);
+    var file_writer: Io.File.Writer = file.writer(io, file_writer_buffer);
+    var fwriter: *Io.Writer = &file_writer.interface;
+
+    const stdout_writer_buffer: []u8 = try allocator.alloc(u8, 256);
+    const stdout: Io.File = .stdout();
+    var stdout_writer: Io.File.Writer = stdout.writer(io, stdout_writer_buffer);
+    var owriter: *Io.Writer = &stdout_writer.interface;
+
+    try fwriter.print("P3\n{d} {d}\n255\n", .{ image_width, image_height });
+
+    for (0..image_height) |j| {
+        //TODO: Use std.Progess later.
+        try owriter.print("\rScanlines remaining: {d}", .{image_height - j});
+        try owriter.flush();
+        for (0..image_width) |i| {
+            const i_f64: f64 = @floatFromInt(i);
+            const j_f64: f64 = @floatFromInt(j);
+            const pixel_center = pixel00_loc.add(pixel_delta_u.scale(i_f64)).add(pixel_delta_v.scale(j_f64));
+            const ray_direction = pixel_center.sub(camera_center);
+            const ray: Ray = .{ .origin = camera_center, .direction = ray_direction };
+            const pixel_color: Color = color.rayColor(&ray);
+            try color.writeColor(fwriter, &pixel_color);
+        }
     }
 
-    // In order to do I/O operations need an `Io` instance.
-    const io = init.io;
-
-    // Stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
-    const stdout_writer = &stdout_file_writer.interface;
-
-    try riowlib.printAnotherMessage(stdout_writer);
-
-    try stdout_writer.flush(); // Don't forget to flush!
+    try fwriter.flush();
+    try owriter.writeAll("\rDone.                      \n");
+    try owriter.flush();
 }
 
-test "simple test" {
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(i32) = .empty;
-    defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(gpa, 42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
-
-test "fuzz example" {
-    try std.testing.fuzz({}, testOne, .{});
-}
-
-fn testOne(context: void, smith: *std.testing.Smith) !void {
-    _ = context;
-    // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(u8) = .empty;
-    defer list.deinit(gpa);
-    while (!smith.eos()) switch (smith.value(enum { add_data, dup_data })) {
-        .add_data => {
-            const slice = try list.addManyAsSlice(gpa, smith.value(u4));
-            smith.bytes(slice);
-        },
-        .dup_data => {
-            if (list.items.len == 0) continue;
-            if (list.items.len > std.math.maxInt(u32)) return error.SkipZigTest;
-            const len = smith.valueRangeAtMost(u32, 1, @min(32, list.items.len));
-            const off = smith.valueRangeAtMost(u32, 0, @intCast(list.items.len - len));
-            try list.appendSlice(gpa, list.items[off..][0..len]);
-            try std.testing.expectEqualSlices(
-                u8,
-                list.items[off..][0..len],
-                list.items[list.items.len - len ..],
-            );
-        },
-    };
-}
