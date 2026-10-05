@@ -8,6 +8,9 @@ const Point3 = geom.Point3;
 const color = riowlib.color;
 const Color = color.Color;
 const Ray = riowlib.Ray;
+const objects = riowlib.objects;
+const Hittable = objects.Hittable;
+const Hit = objects.Hit;
 
 // Image
 const aspect_ratio: f64 = 16.0 / 9.0;
@@ -42,6 +45,11 @@ const viewport_upper_left = blk: {
 };
 const pixel00_loc = viewport_upper_left.add(pixel_delta_u.add(pixel_delta_v).scale(0.5));
 
+// World
+const sphere1 = Hittable{ .sphere = .init(Point3.init(0, 0 , -1), 0.5)};
+const sphere2 = Hittable{ .sphere = .init(Point3.init(0, -100.5, -1), 100)};
+const world: [2]Hittable = .{ sphere1, sphere2 };
+
 pub fn main() !void {
     var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
     const allocator: std.mem.Allocator = arena.allocator();
@@ -73,8 +81,8 @@ pub fn main() !void {
             const pixel_center = pixel00_loc.add(pixel_delta_u.scale(i_f64)).add(pixel_delta_v.scale(j_f64));
             const ray_direction = pixel_center.sub(camera_center);
             const ray: Ray = .{ .origin = camera_center, .direction = ray_direction };
-            const pixel_color: Color = color.rayColor(&ray);
-            try color.writeColor(fwriter, &pixel_color);
+            const pixel_color: Color = color.rayColor(ray, @constCast(&world));
+            try color.writeColor(fwriter, pixel_color);
         }
     }
 
