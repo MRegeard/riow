@@ -1,6 +1,7 @@
 const std = @import("std");
 const geom = @import("geom.zig");
 const Vec3 = geom.Vec3;
+const builtin = @import("builtin");
 
 var prng = std.Random.DefaultPrng.init(13);
 
@@ -10,6 +11,9 @@ pub fn rf64() f64 {
 }
 
 pub fn rf64Bounded(min: f64, max: f64) f64 {
+    if (builtin.mode == .Debug) {
+        std.debug.assert(min < max);
+    }
     return min + (max - min) * rf64();
 }
 
@@ -22,6 +26,9 @@ pub fn randomVec3() Vec3 {
 }
 
 pub fn randomVec3Bounded(min: f64, max: f64) Vec3 {
+    if (builtin.mode == .Debug) {
+        std.debug.assert(min < max);
+    }
     return .{
         .x = rf64Bounded(min, max),
         .y = rf64Bounded(min, max),

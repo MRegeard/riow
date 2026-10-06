@@ -70,13 +70,11 @@ pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_dep
     };
 }
 
-pub fn render(self: Camera, fwriter: *std.Io.Writer, owriter: *std.Io.Writer, world: []Object) !void {
+pub fn render(self: Camera, fwriter: *std.Io.Writer, progress: std.Progress.Node, world: []Object) !void {
     try fwriter.print("P3\n{d} {d}\n255\n", .{ self.image_width, self.image_height });
 
     for (0..self.image_height) |j| {
-        //TODO: Use std.Progess later.
-        try owriter.print("\rScanlines remaining: {d:3}", .{self.image_height - j});
-        try owriter.flush();
+        progress.completeOne();
         for (0..self.image_width) |i| {
             var pixel_color: Color = .splat(0);
             for (0..self.samples_per_pixel) |_| {
@@ -108,9 +106,10 @@ fn rayColor(ray: Ray, depth: u32, world: []Object) Color {
         return Color.splat(0);
     }
     if (hitAll(world, ray, Range{ .min = 0.001, .max = std.math.inf(f64) })) |h| {
-        const direction = h.normal.add(rand.randomUnitVector());
-        return rayColor(Ray{ .origin = h.position, .direction = direction }, depth - 1, world).scale(0.5);
-        //        return h.normal.add(Color.init(1, 1, 1)).scale(0.5);
+        if (h.material.scatter(ray, h)) |scatter| {
+            return scatter.attenuation.mulComps(rayColor(scatter.scattered_ray, depth - 1, world));
+        }
+        return Color.zeroes();
     }
 
     const unit_direction: Vec3 = ray.direction.normalize();

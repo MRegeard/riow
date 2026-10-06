@@ -125,3 +125,30 @@ pub fn clampf64(self: Vec3, min: f64, max: f64) Vec3 {
 pub fn clampf64InPlace(self: *Vec3, min: f64, max: f64) void {
     self.* = self.clampf64(min, max);
 }
+
+pub fn nearZero(self: Vec3, tol: f64) bool {
+    return @abs(self.x) < tol and @abs(self.y) < tol and @abs(self.z) < tol;
+}
+
+pub fn reflect(self: Vec3, normal: Vec3) Vec3 {
+    return self.sub(normal.scale(2*self.dot(normal)));
+}
+
+pub fn mulComps(self: Vec3, other: Vec3) Vec3 {
+    return .{
+        .x = self.x * other.x,
+        .y = self.y * other.y,
+        .z = self.z * other.z,
+    };
+}
+
+pub fn mulCompsInPlace(self: *Vec3, other: Vec3) void {
+    self.* = self.mulComps(other);
+}
+
+pub fn refract(self: Vec3, normal: Vec3, relative_index: f64) Vec3 {
+    const cos_theta = @min(self.neg().dot(normal), 1.0);
+    const out_perp = self.add(normal.scale(cos_theta)).scale(relative_index);
+    const out_parallel = normal.scale(-@sqrt(@abs(1.0 - out_perp.magSquare())));
+    return out_perp.add(out_parallel);
+}
