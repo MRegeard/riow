@@ -10,5 +10,3 @@ direction: Vec3,
 pub fn at(self: Ray, t: f64) Point3 {
     return self.origin.add(self.direction.scale(t));
 }
-
-

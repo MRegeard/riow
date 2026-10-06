@@ -7,7 +7,7 @@ const Vec3 = geom.Vec3;
 const Ray = @import("Ray.zig");
 const Range = @import("Range.zig");
 
-pub fn hitAll(obj_list: []Hittable, ray: Ray, ray_range: Range) ?Hit {
+pub fn hitAll(obj_list: []Object, ray: Ray, ray_range: Range) ?Hit {
     var closest = ray_range.max;
     var hit_record: ?Hit = null;
     for (obj_list) |obj| {
@@ -19,11 +19,11 @@ pub fn hitAll(obj_list: []Hittable, ray: Ray, ray_range: Range) ?Hit {
     return hit_record;
 }
 
-pub const HittableEnum = enum {
+pub const ObjectEnum = enum {
     sphere,
 };
 
-pub const Hittable = union(HittableEnum) {
+pub const Object = union(ObjectEnum) {
     const Self = @This();
 
     sphere: Sphere,

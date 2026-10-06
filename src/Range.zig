@@ -19,3 +19,9 @@ pub fn contains(r: Range, x: f64) bool {
 pub fn surrounds(r: Range, x: f64) bool {
     return (r.min < x and x < r.max);
 }
+
+pub fn clamp(r: Range, x: f64) f64 {
+    if (x < r.min) return r.min;
+    if (x > r.max) return r.max;
+    return x;
+}

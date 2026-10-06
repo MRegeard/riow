@@ -101,3 +101,27 @@ pub fn normalizeInPlace(self: *Vec3) void {
 pub fn isUnit(self: Vec3, tol: f64) bool {
     return std.math.approxEqAbs(f64, self.magSquare(), 1, tol);
 }
+
+pub fn clamp(self: Vec3, min: Vec3, max: Vec3) Vec3 {
+    return .{
+        .x = std.math.clamp(self.x, min.x, max.x),
+        .y = std.math.clamp(self.y, min.y, max.y),
+        .z = std.math.clamp(self.z, min.z, max.z),
+    };
+}
+
+pub fn clampInPlace(self: *Vec3, min: Vec3, max: Vec3) void {
+    self.* = self.clamp(min, max);
+}
+
+pub fn clampf64(self: Vec3, min: f64, max: f64) Vec3 {
+    return .{
+        .x = std.math.clamp(self.x, min, max),
+        .y = std.math.clamp(self.y, min, max),
+        .z = std.math.clamp(self.z, min, max),
+    };
+}
+
+pub fn clampf64InPlace(self: *Vec3, min: f64, max: f64) void {
+    self.* = self.clampf64(min, max);
+}
