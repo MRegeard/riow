@@ -25,8 +25,20 @@ pixel_samples_scale: f64,
 max_depth: u32,
 
 vfov: f64,
+lookfrom: Point3,
+lookat: Point3,
+vup: Vec3,
 
-pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_depth: u32, vfov: f64) Camera {
+pub fn init(
+    aspect_ratio: f64,
+    image_width: u32,
+    samples_per_pixel: u32,
+    max_depth: u32,
+    vfov: f64,
+    lookfrom: Point3,
+    lookat: Point3,
+    vup: Vec3,
+) Camera {
     const image_width_f64: f64 = @floatFromInt(image_width);
 
     const image_h_f64: f64 = image_width / aspect_ratio;
@@ -34,16 +46,21 @@ pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_dep
     const image_height_f64: f64 = @floatFromInt(image_height);
 
     // Camera
-    const focal_length: f64 = 1.0;
+    const focal_length: f64 = lookfrom.sub(lookat).mag();
     const theta: f64 = std.math.degreesToRadians(vfov);
     const h = @tan(theta / 2.0);
     const viewport_height: f64 = 2 * h * focal_length;
     const viewport_width: f64 = viewport_height * (image_width_f64 / image_height_f64);
-    const camera_center: Point3 = .zeroes();
+    const camera_center: Point3 = lookfrom;
+
+    // Calculate the u, v, w unit basis vector for the camera coordinate frame.
+    const w = lookfrom.sub(lookat).normalize();
+    const u = vup.cross(w).normalize();
+    const v = w.cross(u);
 
     // Calculate the horizontal and vertical vector across the viewport edges.
-    const viewport_u: Vec3 = .init(viewport_width, 0, 0);
-    const viewport_v: Vec3 = .init(0, -viewport_height, 0);
+    const viewport_u: Vec3 = u.scale(viewport_width);
+    const viewport_v: Vec3 = v.neg().scale(viewport_height);
 
     // Calculate associated delta vectors from pixel to pixel.
     const pixel_delta_u: Vec3 = viewport_u.scale(1 / image_width_f64);
@@ -53,7 +70,7 @@ pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_dep
     const viewport_upper_left = blk: {
         const viewport_u_half = viewport_u.scale(0.5);
         const viewport_v_half = viewport_v.scale(0.5);
-        const focal_length_vec: Vec3 = .init(0, 0, focal_length);
+        const focal_length_vec: Vec3 = w.scale(focal_length);
         const res = camera_center.sub(focal_length_vec).sub(viewport_u_half).sub(viewport_v_half);
         break :blk res;
     };
@@ -72,6 +89,9 @@ pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_dep
         .pixel_samples_scale = pixel_samples_scale,
         .max_depth = max_depth,
         .vfov = vfov,
+        .lookfrom = lookfrom,
+        .lookat = lookat,
+        .vup = vup,
     };
 }
 
