@@ -24,7 +24,9 @@ camera_center: Point3,
 pixel_samples_scale: f64,
 max_depth: u32,
 
-pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_depth: u32) Camera {
+vfov: f64,
+
+pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_depth: u32, vfov: f64) Camera {
     const image_width_f64: f64 = @floatFromInt(image_width);
 
     const image_h_f64: f64 = image_width / aspect_ratio;
@@ -33,7 +35,9 @@ pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_dep
 
     // Camera
     const focal_length: f64 = 1.0;
-    const viewport_height: f64 = 2.0;
+    const theta: f64 = std.math.degreesToRadians(vfov);
+    const h = @tan(theta / 2.0);
+    const viewport_height: f64 = 2 * h * focal_length;
     const viewport_width: f64 = viewport_height * (image_width_f64 / image_height_f64);
     const camera_center: Point3 = .zeroes();
 
@@ -67,6 +71,7 @@ pub fn init(aspect_ratio: f64, image_width: u32, samples_per_pixel: u32, max_dep
         .camera_center = camera_center,
         .pixel_samples_scale = pixel_samples_scale,
         .max_depth = max_depth,
+        .vfov = vfov,
     };
 }
 

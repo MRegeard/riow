@@ -17,21 +17,31 @@ const material = riowlib.material;
 const material_ground = material.Material.init(.lambertian, Color.init(0.8, 0.8, 0.0), .{});
 const material_center = material.Material.init(.lambertian, Color.init(0.1, 0.2, 0.5), .{});
 //const material_left = material.Material.init(.metal, Color.init(0.8, 0.8, 0.8), .{ .metal_fuzz = 0.3 });
-const material_left = material.Material.init(.dielectric, Color.init(1.0, 1.0, 1.0), .{.refraction_index = 1.5});
-const material_bubble = material.Material.init(.dielectric, Color.init(1.0, 1.0, 1.0), .{.refraction_index = 1.0 / 1.5});
-const material_right = material.Material.init(.metal, Color.init(0.8, 0.6, 0.2), .{ .metal_fuzz = 1.0 });
+const _material_left = material.Material.init(.dielectric, Color.init(1.0, 1.0, 1.0), .{ .refraction_index = 1.5 });
+const material_bubble = material.Material.init(.dielectric, Color.init(1.0, 1.0, 1.0), .{ .refraction_index = 1.0 / 1.5 });
+const _material_right = material.Material.init(.metal, Color.init(0.8, 0.6, 0.2), .{ .metal_fuzz = 1.0 });
 
 // Objects
 const sphere_ground = Object{ .sphere = .init(Point3.init(0.0, -100.5, -1.0), 100, @constCast(&material_ground)) };
 const sphere_center = Object{ .sphere = .init(Point3.init(0.0, 0.0, -1.2), 0.5, @constCast(&material_center)) };
-const sphere_left = Object{ .sphere = .init(Point3.init(-1.0, 0.0, -1.0), 0.5, @constCast(&material_left)) };
-const  sphere_bubble = Object{ .sphere = .init(Point3.init(-1.0, 0.0, -1.0), 0.4, @constCast(&material_bubble))};
-const sphere_right = Object{ .sphere = .init(Point3.init(1.0, 0, -1.0), 0.5, @constCast(&material_right)) };
+const _sphere_left = Object{ .sphere = .init(Point3.init(-1.0, 0.0, -1.0), 0.5, @constCast(&material_left)) };
+const sphere_bubble = Object{ .sphere = .init(Point3.init(-1.0, 0.0, -1.0), 0.4, @constCast(&material_bubble)) };
+const _sphere_right = Object{ .sphere = .init(Point3.init(1.0, 0, -1.0), 0.5, @constCast(&material_right)) };
 
 // World
-const world: [5]Object = .{ sphere_ground, sphere_left, sphere_center, sphere_bubble, sphere_right };
+const _world: [5]Object = .{ sphere_ground, sphere_left, sphere_center, sphere_bubble, sphere_right };
 
-const camera: Camera = .init(16.0 / 9.0, 400, 100, 50);
+const R: f64 = @cos(std.math.pi / 4.0);
+
+const material_left = material.Material.init(.lambertian, Color.init(0, 0, 1), .{});
+const material_right = material.Material.init(.lambertian, Color.init(1, 0, 0), .{});
+
+const sphere_left = Object{ .sphere = .init(Point3.init(-R, 0, -1), R, @constCast(&material_left)) };
+const sphere_right = Object{ .sphere = .init(Point3.init(R, 0, -1), R, @constCast(&material_right)) };
+
+const world: [2]Object = .{ sphere_left, sphere_right };
+
+const camera: Camera = .init(16.0 / 9.0, 400, 100, 50, 90);
 
 pub fn main() !void {
     var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
@@ -48,11 +58,10 @@ pub fn main() !void {
     var fwriter: *Io.Writer = &file_writer.interface;
 
     var progess_buffer: [1024]u8 = undefined;
-//    const stdout_writer_buffer: []u8 = try allocator.alloc(u8, 256);
+    //    const stdout_writer_buffer: []u8 = try allocator.alloc(u8, 256);
     const stdout: Io.File = .stdout();
     var stdout_writer: Io.File.Writer = stdout.writer(io, &progess_buffer);
     var owriter: *Io.Writer = &stdout_writer.interface;
-
 
     const progress = std.Progress.start(io, .{
         .draw_buffer = &progess_buffer,
