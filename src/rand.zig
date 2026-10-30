@@ -54,3 +54,11 @@ pub fn randomOnHemisphere(normal: Vec3) Vec3 {
         return on_unit_sphere.neg();
     }
 }
+
+pub fn randomInUnitDisk() Vec3 {
+    while (true) {
+        const p: Vec3 = .init(rf64Bounded(-1, 1), rf64Bounded(-1, 1), 0);
+        if (p.magSquare() < 1)
+            return p;
+    }
+}

@@ -31,7 +31,18 @@ const sphere_right = Object{ .sphere = .init(Point3.init(1.0, 0, -1.0), 0.5, @co
 // World
 const world: [5]Object = .{ sphere_ground, sphere_left, sphere_center, sphere_bubble, sphere_right };
 
-const camera: Camera = .init(16.0 / 9.0, 400, 100, 50, 20, .init(-2, 2, 1), .init(0, 0, -1), .init(0, 1, 0));
+const aspect_ratio: f64 = 16.0 / 9.0;
+const image_width = 400;
+const samples_per_pixel = 100;
+const max_depth = 50;
+const vfov = 20;
+const lookfrom: Point3 = .init(-2, 2, 1);
+const lookat: Point3 = .init(0, 0, -1);
+const vup: Vec3 = .init(0, 1, 0);
+const defocus_angle = 10.0;
+const focus_dist = 3.4;
+
+const camera: Camera = .init(aspect_ratio, image_width, samples_per_pixel, max_depth, vfov, lookfrom, lookat, vup, defocus_angle, focus_dist);
 
 pub fn main() !void {
     var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
