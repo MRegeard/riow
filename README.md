@@ -9,3 +9,6 @@ book. See the [RayTracing project on GitHub](https://github.com/RayTracing/raytr
 - Zig 0.16.0
 - This project is based on the Version 4.0.2, 2025-04-25 of the book.
 
+## Final Rendering
+
+![image](./data/image.ppm)
