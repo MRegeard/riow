@@ -10,6 +10,10 @@ pub fn zeroes() Vec3 {
     return .{ .x = 0, .y = 0, .z = 0 };
 }
 
+pub fn ones() Vec3 {
+    return .{ .x = 1.0, .y = 1.0, .z = 1.0 };
+}
+
 pub fn init(x: f64, y: f64, z: f64) Vec3 {
     return .{ .x = x, .y = y, .z = z };
 }
@@ -131,7 +135,7 @@ pub fn nearZero(self: Vec3, tol: f64) bool {
 }
 
 pub fn reflect(self: Vec3, normal: Vec3) Vec3 {
-    return self.sub(normal.scale(2*self.dot(normal)));
+    return self.sub(normal.scale(2 * self.dot(normal)));
 }
 
 pub fn mulComps(self: Vec3, other: Vec3) Vec3 {

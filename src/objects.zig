@@ -42,9 +42,9 @@ pub const Hit = struct {
     normal: Vec3,
     t: f64,
     front_face: bool,
-    material: *Material,
+    material: Material,
 
-    pub fn init(ray: Ray, t: f64, position: Vec3, normal: Vec3, material: *Material) Hit {
+    pub fn init(ray: Ray, t: f64, position: Vec3, normal: Vec3, material: Material) Hit {
         if (builtin.mode == .Debug) {
             std.debug.assert(normal.isUnit(1e-8));
         }
@@ -64,11 +64,11 @@ pub const Sphere = struct {
 
     center: Point3,
     radius: f64,
-    material: *Material,
+    material: Material,
 
-    pub fn init(center: Point3, radius: f64, material: *Material) Self {
+    pub fn init(center: Point3, radius: f64, material: Material) Self {
         std.debug.assert(radius >= 0);
-        return .{ .center = center, .radius = radius, .material = material};
+        return .{ .center = center, .radius = radius, .material = material };
     }
 
     pub fn hit(self: Self, ray: Ray, ray_range: Range) ?Hit {
