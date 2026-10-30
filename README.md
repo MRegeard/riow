@@ -11,4 +11,4 @@ book. See the [RayTracing project on GitHub](https://github.com/RayTracing/raytr
 
 ## Final Rendering
 
-![image](https://github.com/MRegeard/riow/blob/main/data/image.ppm)
+![image](https://github.com/MRegeard/riow/blob/main/data/image.ppm?raw=true)
