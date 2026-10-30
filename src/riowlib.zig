@@ -8,3 +8,4 @@ pub const Range = @import("Range.zig");
 pub const Camera = @import("Camera.zig");
 pub const rand = @import("rand.zig");
 pub const material = @import("material.zig");
+pub const color = @import("color.zig");

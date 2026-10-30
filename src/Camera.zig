@@ -110,18 +110,20 @@ pub fn init(
     };
 }
 
-pub fn render(self: Camera, fwriter: *std.Io.Writer, progress: std.Progress.Node, world: []Object) !void {
-    try fwriter.print("P3\n{d} {d}\n255\n", .{ self.image_width, self.image_height });
+pub fn renderPixel(self: Camera, world: []Object, i: usize, j: usize) Color {
+    var pixel_color: Color = .splat(0);
+    for (0..self.samples_per_pixel) |_| {
+        const ray: Ray = self.getRay(@floatFromInt(i), @floatFromInt(j));
+        pixel_color.addInPlace(rayColor(ray, self.max_depth, world));
+    }
+    return pixel_color.scale(self.pixel_samples_scale);
+}
 
+pub fn render(self: Camera, list: *std.ArrayList(Color), progress: std.Progress.Node, world: []Object) !void {
     for (0..self.image_height) |j| {
         progress.completeOne();
         for (0..self.image_width) |i| {
-            var pixel_color: Color = .splat(0);
-            for (0..self.samples_per_pixel) |_| {
-                const ray: Ray = self.getRay(@floatFromInt(i), @floatFromInt(j));
-                pixel_color.addInPlace(rayColor(ray, self.max_depth, world));
-            }
-            try writeColor(fwriter, pixel_color.scale(self.pixel_samples_scale));
+            try list.appendAssumeCapacity(renderPixel(self, world, i, j));
         }
     }
 }
@@ -160,25 +162,4 @@ fn rayColor(ray: Ray, depth: u32, world: []Object) Color {
     const unit_direction: Vec3 = ray.direction.normalize();
     const a = 0.5 * (unit_direction.y + 1.0);
     return Color.init(1, 1, 1).scale(1 - a).add(Color.init(0.5, 0.7, 1.0).scale(a));
-}
-
-fn linearToGamma(linear_component: f64) f64 {
-    if (linear_component > 0) {
-        return @sqrt(linear_component);
-    }
-    return 0;
-}
-
-fn writeColor(writer: *std.Io.Writer, color: Color) !void {
-    const gamma_color: Color = .{
-        .x = linearToGamma(color.x),
-        .y = linearToGamma(color.y),
-        .z = linearToGamma(color.z),
-    };
-    const color_clamp = gamma_color.clampf64(0.000, 0.999);
-    const rbyte: u8 = @intFromFloat(256 * color_clamp.x);
-    const gbyte: u8 = @intFromFloat(256 * color_clamp.y);
-    const bbyte: u8 = @intFromFloat(256 * color_clamp.z);
-
-    try writer.print("{d} {d} {d}\n", .{ rbyte, gbyte, bbyte });
 }

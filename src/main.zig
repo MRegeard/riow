@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const Io = std.Io;
 
 const riowlib = @import("riowlib");
@@ -12,6 +13,7 @@ const Object = objects.Object;
 const Hit = objects.Hit;
 const Camera = riowlib.Camera;
 const material = riowlib.material;
+const color = riowlib.color;
 
 // Material
 const material_ground = material.Material.init(.lambertian, Color.init(0.8, 0.8, 0.0), .{});
@@ -31,9 +33,10 @@ const sphere_right = Object{ .sphere = .init(Point3.init(1.0, 0, -1.0), 0.5, @co
 // World
 const world: [5]Object = .{ sphere_ground, sphere_left, sphere_center, sphere_bubble, sphere_right };
 
+// Camera
 const aspect_ratio: f64 = 16.0 / 9.0;
-const image_width = 400;
-const samples_per_pixel = 100;
+const image_width = 1200;
+const samples_per_pixel = 500;
 const max_depth = 50;
 const vfov = 20;
 const lookfrom: Point3 = .init(-2, 2, 1);
@@ -43,6 +46,17 @@ const defocus_angle = 10.0;
 const focus_dist = 3.4;
 
 const camera: Camera = .init(aspect_ratio, image_width, samples_per_pixel, max_depth, vfov, lookfrom, lookat, vup, defocus_angle, focus_dist);
+
+// Thread
+const thread_number = 8;
+const pixel_number = camera.image_width * camera.image_height;
+
+fn getLineNumber(idx: usize, n: usize, line_number: u32) usize {
+    if (idx == 0) return 0;
+    if (idx == n) return @intCast(line_number);
+
+    return @intCast(idx * line_number / n);
+}
 
 pub fn main() !void {
     var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
@@ -59,7 +73,6 @@ pub fn main() !void {
     var fwriter: *Io.Writer = &file_writer.interface;
 
     var progess_buffer: [1024]u8 = undefined;
-    //    const stdout_writer_buffer: []u8 = try allocator.alloc(u8, 256);
     const stdout: Io.File = .stdout();
     var stdout_writer: Io.File.Writer = stdout.writer(io, &progess_buffer);
     var owriter: *Io.Writer = &stdout_writer.interface;
@@ -70,9 +83,41 @@ pub fn main() !void {
         .root_name = "Scanlines",
     });
 
-    try camera.render(fwriter, progress, @constCast(&world));
+    var list: [thread_number]std.ArrayList(Color) = undefined;
+
+    var threads: [thread_number]std.Thread = undefined;
+
+    for (0..thread_number) |i| {
+        const start = getLineNumber(i, thread_number, camera.image_height);
+        const end = getLineNumber(i + 1, thread_number, camera.image_height);
+        list[i] = try .initCapacity(allocator, (end - start) * camera.image_width);
+        threads[i] = try std.Thread.spawn(.{}, renderThread, .{ camera, @constCast(&world), start, end, &list[i], progress });
+    }
+
+    for (threads) |t| t.join();
+
+    try fwriter.print("P3\n{d} {d}\n255\n", .{ camera.image_width, camera.image_height });
+
+    for (list) |l| {
+        for (l.items) |c| {
+            try color.writeColor(fwriter, c);
+        }
+    }
+
+    //try camera.render(fwriter, progress, @constCast(&world));
 
     try fwriter.flush();
     try owriter.writeAll("\rDone.                      \n");
     try owriter.flush();
+}
+
+pub fn renderThread(cam: Camera, w: []Object, start: usize, end: usize, list: *std.ArrayList(Color), progress: ?std.Progress.Node) !void {
+    for (start..end) |j| {
+        for (0..cam.image_width) |i| {
+            list.appendAssumeCapacity(cam.renderPixel(w, i, j));
+        }
+        if (progress) |prog| {
+            prog.completeOne();
+        }
+    }
 }
